@@ -1,0 +1,170 @@
+
+unit = { (!EOI ~ top_level)* ~ EOI }
+
+repl_unit = { !EOI ~ top_level ~ EOI }
+
+top_level =
+  { equal_def
+  | rewrite_def
+  | equal_rule_def
+  | rule_def
+  }
+
+equal_def = {
+  symbol ~ ":" ~ expr ~ "=" ~ expr ~ "."
+}
+
+rewrite_def = {
+  symbol ~ ":" ~ expr ~ "=>" ~ expr ~ "."
+}
+
+equal_rule_def = {
+  rule ~ symbol ~ ":" ~ expr ~ "=>" ~ expr ~
+  proof ~
+  op* ~
+  qed
+}
+
+rule_def = {
+  rule ~ symbol ~ ":" ~ expr ~ "=" ~ expr ~
+  proof ~
+  op* ~
+  qed
+}
+
+op =
+  { rw
+  | auto
+  | sorry
+  }
+
+auto = _{ "auto" }
+sorry = _{ "sorry" }
+rw_key = _{ "rw" }
+
+rw = { rw_key ~ is_r? ~ symbol }
+
+is_r = { "<-" }
+
+expr = {
+  // WHITESPACE* ~ (raw_expr ~ (!pair_right ~ WHITESPACE+ ~ raw_expr)* ~ pair_right?)? ~ WHITESPACE*
+  raw_expr*
+}
+
+raw_expr =
+	{ quote
+	| constant
+  | "(" ~ expr ~ ")"
+	}
+
+// list =
+  // { "(" ~ list_core ~ ")"
+  // | "[" ~ list_core ~ "]"
+  // }
+
+// pair_right = ${
+  // WHITESPACE+ ~ "." ~ WHITESPACE+ ~ expr
+// }
+
+
+quote = { "\'" ~ expr }
+// unquote = { "," ~ sexpr }
+// quasiquote = { "`" ~ sexpr }
+// unquote_splicing = { ",@" ~ sexpr }
+
+
+symbol = @{ (!(keyword | WHITESPACE | "=" | "=>" | ":" | "is_r" | "\"" | "\'" | "." | "`" | "," | ",@" | "(" | ")" | "[" | "]" | "{" | "}") ~ ANY)+ }
+
+// -------------------------------------------------------
+
+constant =
+  { string_lit
+  // | float_lit
+  // | int_lit
+  // | uint_lit
+  // | bool_lit
+  // | nil_lit
+  | symbol
+  }
+
+int_lit = ${ signed_number ~ !("u" | "f") ~ "i"? }
+uint_lit = ${ number ~ "u" }
+float_lit = ${ float_number ~ "f"? }
+
+float_number = $
+  { (("+" | "-")? ~ number_hex ~ "." ~ ASCII_HEX_DIGIT+)
+  | (("+" | "-")? ~ number_oct ~ "." ~ ASCII_OCT_DIGIT+)
+  | (("+" | "-")? ~ number_bin ~ "." ~ ASCII_BIN_DIGIT+)
+  | (("+" | "-")? ~ number_dec ~ "." ~ ASCII_DIGIT+)
+  }
+
+signed_number = ${ ("+" | "-")? ~ number }
+
+number = $
+  { number_hex
+  | number_oct
+  | number_bin
+  | number_dec
+  }
+
+number_dec = _ { ASCII_DIGIT+ }
+number_oct = _ { "0o" ~ ASCII_OCT_DIGIT+ }
+number_hex = _ { "0x" ~ ASCII_HEX_DIGIT+ }
+number_bin = _ { "0b" ~ ASCII_BIN_DIGIT+ }
+
+keyword = @
+  { rule
+  | proof
+  | qed
+  | auto
+  | sorry
+  | rw_key
+  | bool_lit
+  | nil_lit
+  }
+
+rule = _ { "rule" }
+proof = _ { "proof" }
+qed = _ { "qed" }
+
+bool_lit = @{ kw_false | kw_true }
+
+nil_lit = _ { "nil" }
+
+kw_false = _ { "false" }
+kw_true = _ { "true" }
+
+string_lit = @ { "\"" ~ (escape | (!("\\" | "\"") ~ ANY)+)* ~ "\""}
+
+char_lit = @ { "\'" ~ (escape | ANY) ~ "\'" }
+
+escape = _{ "\\\\"
+  | "\\\""
+  | "\\'"
+  | "\\n"
+  | "\\r"
+  | "\\t"
+  }
+
+
+line_comment = _ {
+  "//" ~ (!NEWLINE ~ ANY)* ~ NEWLINE?
+}
+
+// /*
+block_comment = _ {
+  "{" ~ (block_comment | (!"}" ~ ANY))* ~ "}"
+}
+// */
+
+COMMENT = _
+  { line_comment
+  | block_comment
+  }
+
+WHITESPACE = _
+  { " "
+  | "\t"
+  | WHITE_SPACE
+  | NEWLINE
+  }
